@@ -278,9 +278,15 @@ def handle_groups():
                 try:
                     member_obj_ids.append(ObjectId(mid))
                 except:
-                    pass
+                    pass # Not an ObjectId
             
-            members = users_collection.find({"_id": {"$in": member_obj_ids}})
+            # Fetch members matching either the ObjectId or the fallback string (for older SQLite-style IDs)
+            members = users_collection.find({
+                "$or": [
+                    {"_id": {"$in": member_obj_ids}},
+                    {"_id": {"$in": member_ids}} 
+                ]
+            })
             for m in members:
                 members_info.append({"id": str(m['_id']), "username": m.get('username')})
                 

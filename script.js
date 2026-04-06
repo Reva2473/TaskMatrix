@@ -269,7 +269,7 @@ async function loadGroups() {
                         ${group.members.map(m => `<span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-xs border border-white/5">${m.username}</span>`).join('')}
                     </div>
                 </div>
-                ${group.owner_id === currentUser.id ? `
+                ${String(group.owner_id) === String(currentUser.id) ? `
                 <button onclick="triggerGroupAddAction('${group.id}')" class="w-full btn-secondary py-2 rounded-lg text-sm font-semibold text-white mt-1 border-white/10 hover:border-white/20">
                     + Add Member
                 </button>
