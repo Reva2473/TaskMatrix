@@ -7,7 +7,12 @@ import datetime
 import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///collabtask.db'
+
+if os.environ.get('VERCEL') == '1':
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/collabtask.db'
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///collabtask.db'
+    
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'super-secret-collabtask-key' 
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
