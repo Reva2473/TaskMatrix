@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CollabTask - Premium</title>
+    <meta name="description" content="A modern to-do app">
+    <title>Co-Do</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -143,8 +144,8 @@
     <nav class="glass border-b-0 sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-20 items-center">
-                <div class="flex-shrink-0 font-bold text-3xl tracking-tight text-gradient flex items-center gap-2">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#grad1)" stroke-width="2"
+                <div class="flex-shrink-0 flex items-center gap-3">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="url(#grad1)" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <defs>
                             <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -154,7 +155,10 @@
                         </defs>
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                     </svg>
-                    CollabTask
+                    <div class="flex flex-col">
+                        <span class="font-bold text-3xl tracking-tight text-gradient leading-none mb-0.5">Co-Do</span>
+                        <span class="text-xs font-medium text-slate-400 tracking-wide uppercase">A modern to-do app</span>
+                    </div>
                 </div>
                 <div class="flex items-center space-x-6">
                     <span id="user-greeting" class="hidden-pane text-sm font-medium text-slate-300"></span>
@@ -253,28 +257,34 @@
 
     <div id="edit-task-modal" class="hidden-pane fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-            <div class="fixed inset-0 transition-opacity bg-slate-900/80 backdrop-blur-sm" id="edit-task-modal-bg"></div>
-            <div class="inline-block glass rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 align-middle sm:max-w-lg w-full border border-white/10 z-50 fade-in">
+            <div class="fixed inset-0 transition-opacity bg-slate-900/80 backdrop-blur-sm" id="edit-task-modal-bg">
+            </div>
+            <div
+                class="inline-block glass rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 align-middle sm:max-w-lg w-full border border-white/10 z-50 fade-in">
                 <form id="edit-task-form">
                     <input type="hidden" id="edit-task-id">
                     <div class="px-8 pt-8 pb-6 space-y-5">
                         <h3 class="text-2xl font-bold text-white mb-6">Edit Task</h3>
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-2">Title</label>
-                            <input type="text" id="edit-task-title" required class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
+                            <input type="text" id="edit-task-title" required
+                                class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-2">Description</label>
-                            <textarea id="edit-task-desc" rows="3" class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm"></textarea>
+                            <textarea id="edit-task-desc" rows="3"
+                                class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm"></textarea>
                         </div>
                         <div class="grid grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-sm font-medium text-slate-300 mb-2">Due Date</label>
-                                <input type="date" id="edit-task-date" class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
+                                <input type="date" id="edit-task-date"
+                                    class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-300 mb-2">Priority</label>
-                                <select id="edit-task-priority" class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
+                                <select id="edit-task-priority"
+                                    class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
                                     <option value="Low">Low</option>
                                     <option value="Medium">Medium</option>
                                     <option value="High">High</option>
@@ -283,12 +293,16 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-2">Image URL (Optional)</label>
-                            <input type="url" id="edit-task-image" placeholder="https://..." class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
+                            <input type="url" id="edit-task-image" placeholder="https://..."
+                                class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
                         </div>
                     </div>
                     <div class="px-8 py-6 bg-slate-900/50 flex flex-row-reverse gap-3 border-t border-white/5">
-                        <button type="submit" class="btn-primary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-white">Save Changes</button>
-                        <button type="button" id="close-edit-task-modal-btn" class="btn-secondary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-slate-300">Cancel</button>
+                        <button type="submit"
+                            class="btn-primary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-white">Save
+                            Changes</button>
+                        <button type="button" id="close-edit-task-modal-btn"
+                            class="btn-secondary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-slate-300">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -376,7 +390,8 @@
     <div id="share-group-modal" class="hidden-pane fixed inset-0 z-[60] overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 text-center sm:p-0">
             <div class="fixed inset-0 transition-opacity bg-slate-900/80 backdrop-blur-sm"></div>
-            <div class="inline-block glass rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-md w-full border border-white/10 z-[60] fade-in">
+            <div
+                class="inline-block glass rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:max-w-md w-full border border-white/10 z-[60] fade-in">
                 <form id="share-group-form">
                     <input type="hidden" id="share-group-task-id">
                     <div class="px-8 pt-8 pb-6 space-y-4">
@@ -384,13 +399,16 @@
                         <p class="text-sm text-slate-400 mb-4">Select a group to share this task with.</p>
                         <div>
                             <label class="block text-sm font-medium text-slate-300 mb-2">Group</label>
-                            <select id="share-group-select" required class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
+                            <select id="share-group-select" required
+                                class="glass-input block w-full px-4 py-3 rounded-xl sm:text-sm">
                             </select>
                         </div>
                     </div>
                     <div class="px-8 py-6 bg-slate-900/50 flex flex-row-reverse gap-3 border-t border-white/5">
-                        <button type="submit" class="btn-primary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-white">Send</button>
-                        <button type="button" id="close-share-group-modal-btn" class="btn-secondary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-slate-300">Cancel</button>
+                        <button type="submit"
+                            class="btn-primary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-white">Send</button>
+                        <button type="button" id="close-share-group-modal-btn"
+                            class="btn-secondary w-auto inline-flex justify-center rounded-xl px-6 py-2.5 text-sm font-bold text-slate-300">Cancel</button>
                     </div>
                 </form>
             </div>
