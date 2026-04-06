@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:5000';
+const API_URL = window.location.hostname.includes('vercel.app') || window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:' ? '' : 'http://127.0.0.1:5000';
 
 let token = localStorage.getItem('collabtask_token');
 let currentUser = JSON.parse(localStorage.getItem('collabtask_user'));
