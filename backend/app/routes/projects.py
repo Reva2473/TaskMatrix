@@ -18,7 +18,8 @@ def handle_projects():
             "owner_id": user_id,
             "members": [
                 { "user_id": user_id, "role": "Admin", "status": "Joined" }
-            ]
+            ],
+            "custom_roles": []
         }
         result = projects_collection.insert_one(new_project)
         return jsonify({"msg": "Project created", "project_id": str(result.inserted_id)}), 201
@@ -56,7 +57,8 @@ def handle_projects():
                 "name": p.get('name'),
                 "description": p.get('description'),
                 "owner_id": p.get('owner_id'),
-                "members": members_info
+                "members": members_info,
+                "custom_roles": p.get('custom_roles', [])
             })
         return jsonify(projects_data), 200
 
@@ -220,3 +222,85 @@ def leave_project(project_id):
         {"$pull": {"members": {"user_id": user_id}}}
     )
     return jsonify({"msg": "Successfully left the project"})
+
+@projects_bp.route('/<project_id>/roles', methods=['POST'])
+@jwt_required()
+def create_custom_role(project_id):
+    import uuid
+    user_id = get_jwt_identity()
+    try:
+        obj_id = ObjectId(project_id)
+    except:
+        return jsonify({"msg": "Invalid project ID"}), 400
+        
+    project = projects_collection.find_one({"_id": obj_id})
+    if not project:
+        return jsonify({"msg": "Project not found"}), 404
+        
+    is_admin = project.get('owner_id') == user_id
+    if not is_admin:
+        for m in project.get('members', []):
+            if m.get('user_id') == user_id and m.get('role') == 'Admin':
+                is_admin = True
+                break
+    if not is_admin:
+        return jsonify({"msg": "Unauthorized"}), 403
+        
+    data = request.get_json()
+    name = data.get('name')
+    color = data.get('color', '#3B82F6') # default brand-default
+    task_id = data.get('task_id')
+    
+    if not name or not task_id:
+        return jsonify({"msg": "Role name and root task ID are required"}), 400
+        
+    new_role = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "color": color,
+        "task_id": task_id
+    }
+    
+    projects_collection.update_one(
+        {"_id": obj_id},
+        {"$push": {"custom_roles": new_role}}
+    )
+    return jsonify({"msg": "Custom role created", "role": new_role})
+
+@projects_bp.route('/<project_id>/roles/<role_id>', methods=['DELETE'])
+@jwt_required()
+def delete_custom_role(project_id, role_id):
+    user_id = get_jwt_identity()
+    try:
+        obj_id = ObjectId(project_id)
+    except:
+        return jsonify({"msg": "Invalid project ID"}), 400
+        
+    project = projects_collection.find_one({"_id": obj_id})
+    if not project:
+        return jsonify({"msg": "Project not found"}), 404
+        
+    is_admin = project.get('owner_id') == user_id
+    if not is_admin:
+        for m in project.get('members', []):
+            if m.get('user_id') == user_id and m.get('role') == 'Admin':
+                is_admin = True
+                break
+    if not is_admin:
+        return jsonify({"msg": "Unauthorized"}), 403
+        
+    # Optional: Revert members to 'Viewer' if they had this role
+    role_to_delete = next((r for r in project.get('custom_roles', []) if r.get('id') == role_id), None)
+    if role_to_delete:
+         projects_collection.update_many(
+             {"_id": obj_id, "members.role": role_to_delete.get('name')},
+             {"$set": {"members.$[elem].role": "Viewer"}},
+             array_filters=[{"elem.role": role_to_delete.get('name')}]
+         )
+
+    projects_collection.update_one(
+        {"_id": obj_id},
+        {"$pull": {"custom_roles": {"id": role_id}}}
+    )
+    return jsonify({"msg": "Custom role deleted"})
+

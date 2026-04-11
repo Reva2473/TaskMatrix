@@ -247,12 +247,22 @@ window.respondInvite = async function(projectId, action) {
     } catch(err) { alert(err.message); }
 }
 
-function getRoleColor(role) {
-    switch(role) {
-        case 'Admin': return 'text-red-400 bg-red-400/10 border-red-400/20';
-        case 'Member': return 'text-blue-400 bg-brand-default/10 border-brand-default/20';
-        default: return 'text-dark-muted bg-dark-hover border-dark-border';
+function getRoleHtml(role, extraClasses='text-[9px]') {
+    let classes = `uppercase font-bold border px-1.5 py-0.5 rounded ${extraClasses} `;
+    let style = "";
+    if(role === 'Admin') classes += 'text-red-400 bg-red-400/10 border-red-400/20';
+    else if(role === 'Viewer') classes += 'text-dark-muted bg-dark-hover border-dark-border';
+    else if(role === 'Member') classes += 'text-blue-400 bg-brand-default/10 border-brand-default/20';
+    else if(activeProjectId) {
+        const p = allProjects.find(x => x.id === activeProjectId);
+        if(p && p.custom_roles) {
+            const cr = p.custom_roles.find(r => r.name === role);
+            if(cr && cr.color) {
+                style = `style="color: ${cr.color}; background-color: ${cr.color}1a; border-color: ${cr.color}33"`;
+            } else classes += 'text-blue-400 bg-brand-default/10 border-brand-default/20';
+        }
     }
+    return `<span class="${classes}" ${style}>${role}</span>`;
 }
 
 function selectProject(id) {
@@ -285,8 +295,8 @@ function selectProject(id) {
     }
     
     const roleSpan = document.getElementById('active-project-role');
-    roleSpan.textContent = userRoleInProject;
-    roleSpan.className = `px-2 py-0.5 rounded text-xs font-semibold border ${getRoleColor(userRoleInProject)}`;
+    const roleHtml = getRoleHtml(userRoleInProject, 'text-xs');
+    roleSpan.outerHTML = roleHtml.replace('<span', '<span id="active-project-role"');
     
     // UI toggles based on role
     const delBtn = document.getElementById('delete-project-btn');
@@ -300,7 +310,9 @@ function selectProject(id) {
     if (userRoleInProject === 'Admin') {
         delBtn.classList.remove('hidden-pane');
         addBtn.classList.remove('hidden-pane');
+        document.getElementById('show-add-role-btn').classList.remove('hidden-pane');
     } else {
+        document.getElementById('show-add-role-btn').classList.add('hidden-pane');
         leaveBtn.classList.remove('hidden-pane');
     }
     
@@ -315,12 +327,13 @@ function selectProject(id) {
     projectMembers = project.members.filter(m => m.status === 'Joined');
     switchTab('workflow');
     loadTasks();
+    renderRoles(project.custom_roles);
 }
 
 function renderMembers(members) {
     const list = document.getElementById('project-members-list');
     list.innerHTML = members.map(m => {
-        const rc = getRoleColor(m.role);
+        const roleTag = getRoleHtml(m.role, 'text-[10px]');
         const canEdit = userRoleInProject === 'Admin' && m.user_id !== currentUser.id;
         
         // Find tasks completed by this member
@@ -348,7 +361,7 @@ function renderMembers(members) {
                 <div class="flex-1 overflow-hidden" ${canEdit ? `onclick="triggerEditMemberRole('${m.user_id}', '${m.username}', '${m.role}')"` : ''}>
                     <div class="flex items-center gap-2 mb-1">
                         <span class="text-sm font-bold text-white truncate ${m.status === 'Pending' ? 'opacity-50' : ''}">${m.username} ${m.status === 'Pending' ? '(Pending)' : ''}</span>
-                        <span class="text-[10px] uppercase font-bold border px-1.5 py-0.5 rounded ${rc}">${m.role}</span>
+                        ${roleTag}
                     </div>
                     ${canEdit ? `<div class="text-[10px] text-brand-default opacity-0 group-hover:opacity-100 transition-opacity">Click to edit role</div>` : '<div class="text-[10px] text-transparent">No action</div>'}
                 </div>
@@ -719,7 +732,7 @@ window.openRemarks = function(taskId) {
                     if(m) roleStr = m.role;
                 }
             }
-            const rc = getRoleColor(roleStr);
+            const roleTag = getRoleHtml(roleStr, 'text-[9px]');
             const ts = new Date(r.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
 
             return `
@@ -727,7 +740,7 @@ window.openRemarks = function(taskId) {
                 <div class="${isMe ? 'bg-brand-default/20 border-brand-default/30 rounded-tr-sm' : 'bg-dark-base border-dark-border rounded-tl-sm'} border p-3 rounded-xl w-[85%] relative shadow-lg">
                     <div class="flex items-center gap-2 mb-1.5">
                         <div class="font-bold text-xs ${isMe ? 'text-white' : 'text-brand-default'}">${isMe ? 'You' : r.username}</div>
-                        <div class="text-[9px] uppercase font-bold border px-1.5 py-0.5 rounded ${rc}">${roleStr}</div>
+                        ${roleTag}
                     </div>
                     <div class="text-sm text-white leading-relaxed">${r.text}</div>
                     <div class="text-[9px] text-dark-muted mt-2 text-right opacity-75">${ts}</div>
@@ -756,6 +769,80 @@ document.getElementById('remark-form').addEventListener('submit', async(e) => {
 });
 
 
+
+function renderRoles(roles) {
+    const list = document.getElementById('project-roles-list');
+    if(!roles || roles.length === 0) {
+        list.innerHTML = '<div class="text-xs text-dark-muted italic">No custom roles created.</div>';
+        return;
+    }
+    list.innerHTML = roles.map(r => {
+        const taskObj = allTasks.find(t => t.id === r.task_id);
+        const taskName = taskObj ? taskObj.title : 'Deleted Task';
+        return `
+        <div class="bg-dark-base border border-dark-border p-3 rounded-lg flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold px-2 py-0.5 rounded border uppercase inline-block" style="color: ${r.color}; background-color: ${r.color}1a; border-color: ${r.color}33">${r.name}</span>
+                <button onclick="deleteCustomRole('${r.id}')" class="text-red-500 hover:bg-red-500/10 p-1 rounded transition-colors" title="Delete Role">
+                    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </div>
+            <div class="text-[10px] text-dark-muted truncate"><b>Subtree Link:</b> ${taskName}</div>
+        </div>
+        `;
+    }).join('');
+}
+
+window.deleteCustomRole = async function(roleId) {
+    if(confirm('Are you sure you want to delete this role? Members with this role will become Viewers.')) {
+        await apiCall(`/projects/${activeProjectId}/roles/${roleId}`, 'DELETE');
+        loadProjects(); // this will refresh the UI
+    }
+}
+
+window.triggerCreateRole = function() {
+    document.getElementById('role-form').reset();
+    const taskSelect = document.getElementById('role-task');
+    if(allTasks.length === 0) {
+        taskSelect.innerHTML = '<option disabled selected value="">No tasks available</option>';
+    } else {
+        taskSelect.innerHTML = allTasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+    }
+    document.getElementById('role-modal').classList.remove('hidden-pane');
+    
+    // Reset color picker to first color (Blue)
+    const firstColor = document.querySelector('#role-color-picker div');
+    if(firstColor) selectRoleColor('#3B82F6', firstColor);
+}
+
+window.selectRoleColor = function(hex, el) {
+    document.getElementById('role-color').value = hex;
+    // Update UI highlights
+    const items = document.querySelectorAll('#role-color-picker div');
+    items.forEach(item => {
+        item.classList.remove('border-white', 'ring-2', 'ring-brand-default/40');
+        item.classList.add('border-transparent');
+        item.style.transform = 'scale(1)';
+    });
+    el.classList.add('border-white', 'ring-2', 'ring-brand-default/40');
+    el.classList.remove('border-transparent');
+    el.style.transform = 'scale(1.1)';
+}
+
+document.getElementById('role-form').addEventListener('submit', async(e) => {
+    e.preventDefault();
+    const payload = {
+        name: document.getElementById('role-name').value,
+        color: document.getElementById('role-color').value,
+        task_id: document.getElementById('role-task').value
+    };
+    try {
+        await apiCall(`/projects/${activeProjectId}/roles`, 'POST', payload);
+        document.getElementById('role-modal').classList.add('hidden-pane');
+        loadProjects();
+    } catch(err) { alert(err.message); }
+});
+
 // -------------------------
 // Custom Modal
 // -------------------------
@@ -779,7 +866,7 @@ const roleDescriptions = {
 };
 
 actionRole.addEventListener('change', (e) => {
-    actionRoleDesc.textContent = roleDescriptions[e.target.value] || '';
+    actionRoleDesc.textContent = roleDescriptions[e.target.value] || 'Custom role strictly bound to a task subtree.';
 });
 
 let actionCallback = null;
@@ -794,6 +881,19 @@ function customAction(title, desc, config, callback) {
     actionRoleSec.classList.add('hidden-pane');
     actionCheckboxSec.classList.add('hidden-pane');
     
+    // Populate Role options
+    const p = activeProjectId ? allProjects.find(x => x.id === activeProjectId) : null;
+    let customRoleHtml = '';
+    if(p && p.custom_roles) {
+        customRoleHtml = p.custom_roles.map(cr => `<option value="${cr.name}">${cr.name}</option>`).join('');
+    }
+    actionRole.innerHTML = `
+        <option value="Admin">Admin</option>
+        <option value="Member">Member</option>
+        <option value="Viewer">Viewer</option>
+        ${customRoleHtml}
+    `;
+    
     if(actionType === 'checkbox') {
         actionCheckboxSec.classList.remove('hidden-pane');
         actionCheckbox.checked = false;
@@ -806,7 +906,7 @@ function customAction(title, desc, config, callback) {
     } else if(actionType === 'edit_role') {
         actionRoleSec.classList.remove('hidden-pane');
         actionRole.value = config.defaultRole || 'Member';
-        actionRoleDesc.textContent = roleDescriptions[actionRole.value];
+        actionRoleDesc.textContent = roleDescriptions[actionRole.value] || 'Custom role strictly bound to a task subtree.';
     }
     
     actionCallback = callback;
@@ -848,20 +948,20 @@ document.getElementById('action-cancel-btn').addEventListener('click', () => {
 
 window.switchTab = function(tabName) {
     const workflowBtn = document.getElementById('tab-btn-workflow');
-    const membersBtn = document.getElementById('tab-btn-members');
+    const manageBtn = document.getElementById('tab-btn-manage');
     const paneWorkflow = document.getElementById('pane-workflow');
-    const paneMembers = document.getElementById('pane-members');
+    const paneManage = document.getElementById('pane-manage');
 
     if(tabName === 'workflow') {
         workflowBtn.className = "text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors";
-        membersBtn.className = "text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors";
+        manageBtn.className = "text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors";
         paneWorkflow.classList.remove('hidden-pane');
-        paneMembers.classList.add('hidden-pane');
+        paneManage.classList.add('hidden-pane');
     } else {
         workflowBtn.className = "text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors";
-        membersBtn.className = "text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors";
+        manageBtn.className = "text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors";
         paneWorkflow.classList.add('hidden-pane');
-        paneMembers.classList.remove('hidden-pane');
+        paneManage.classList.remove('hidden-pane');
     }
 }
 

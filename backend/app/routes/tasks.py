@@ -6,6 +6,23 @@ import datetime
 
 tasks_bp = Blueprint('tasks', __name__)
 
+def is_in_task_tree(target_task_id, root_task_id):
+    if str(target_task_id) == str(root_task_id):
+        return True
+    current_id = target_task_id
+    while current_id:
+        try:
+            t = tasks_collection.find_one({"_id": ObjectId(current_id)})
+            if not t:
+                return False
+            parent_id = t.get('parent_task_id')
+            if str(parent_id) == str(root_task_id):
+                return True
+            current_id = parent_id
+        except:
+            return False
+    return False
+
 @tasks_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_task():
@@ -34,8 +51,24 @@ def create_task():
                     allowed = True
                     user_role = m.get('role', 'Viewer')
                     break
+                    
+        parent_task_id = data.get('parent_task_id')
+        
+        # Check custom roles
+        if user_role not in ['Admin', 'Viewer', 'Member']:
+            custom_role = next((cr for cr in project.get('custom_roles', []) if cr.get('name') == user_role), None)
+            if custom_role:
+                assigned_task_id = custom_role.get('task_id')
+                if parent_task_id:
+                    if not is_in_task_tree(parent_task_id, assigned_task_id):
+                        allowed = False
+                else:
+                    allowed = False
+            else:
+                allowed = False
+
         if not allowed or user_role == 'Viewer':
-            return jsonify({"msg": "Viewers cannot create tasks"}), 403
+            return jsonify({"msg": "Unauthorized to create this task"}), 403
             
     except:
         return jsonify({"msg": "Invalid Project ID"}), 400
@@ -149,9 +182,16 @@ def update_delete_task(task_id):
                     user_role = m.get('role', 'Viewer')
                     break
 
+    has_custom_access = False
+    if user_role not in ['Admin', 'Viewer', 'Member']:
+        custom_role = next((cr for cr in project.get('custom_roles', []) if cr.get('name') == user_role), None)
+        if custom_role:
+            assigned_task_id = custom_role.get('task_id')
+            has_custom_access = is_in_task_tree(task_id, assigned_task_id)
+
     if request.method == 'DELETE':
-        if user_role != 'Admin':
-            return jsonify({"msg": "Only admins can delete tasks"}), 403
+        if user_role != 'Admin' and not has_custom_access:
+            return jsonify({"msg": "Unauthorized to delete tasks"}), 403
         tasks_collection.delete_one({"_id": obj_id})
         # Delete subtasks
         tasks_collection.delete_many({"parent_task_id": task_id})
@@ -159,16 +199,13 @@ def update_delete_task(task_id):
         
     if request.method == 'PUT':
         data = request.get_json()
-        # Members can only update is_done if they are assigned. Admins can update anything.
         if user_role == 'Viewer':
             return jsonify({"msg": "Viewers cannot edit tasks"}), 403
 
-        if user_role == 'Member':
-            # Check if they are trying to edit something other than is_done
+        if not (user_role == 'Admin' or has_custom_access):
             if any(k in data for k in ['title', 'description', 'due_date', 'priority', 'assignees']):
                 return jsonify({"msg": "Members cannot edit task details"}), 403
             
-            # They CAN toggle is_done, but ONLY if they are assigned
             if 'is_done' in data:
                 is_assigned = user_id in task.get('assignees', [])
                 if not is_assigned:

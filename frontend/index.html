@@ -200,7 +200,7 @@
                 <!-- Project Tabs -->
                 <div class="h-12 border-b border-dark-border bg-dark-base px-8 flex gap-6 flex-shrink-0">
                     <button id="tab-btn-workflow" onclick="switchTab('workflow')" class="text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors">Workflow</button>
-                    <button id="tab-btn-members" onclick="switchTab('members')" class="text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors">Members</button>
+                    <button id="tab-btn-manage" onclick="switchTab('manage')" class="text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors">Manage Project</button>
                 </div>
 
                 <!-- Project Layout Content -->
@@ -224,21 +224,44 @@
                         </div>
                     </div>
                     
-                    <!-- Members Pane -->
-                    <div class="flex-1 overflow-y-auto p-8 relative flex-col w-full h-full hidden-pane" id="pane-members">
-                        <div class="flex items-center justify-between mb-6">
-                            <div>
-                                <h2 class="text-lg font-semibold text-white">Team Members</h2>
-                                <p class="text-sm text-dark-muted mt-1">Manage team members and view contributions.</p>
+                    <!-- Manage Pane -->
+                    <div class="flex-1 overflow-y-auto p-4 lg:p-8 relative flex-col w-full h-full hidden-pane" id="pane-manage">
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 h-[calc(100vh-200px)]">
+                            
+                            <!-- Custom Roles Column -->
+                            <div class="flex flex-col h-full border border-dark-border bg-dark-panel rounded-xl overflow-hidden shadow-lg">
+                                <div class="px-5 py-4 border-b border-dark-border flex items-center justify-between bg-dark-base flex-shrink-0">
+                                    <div>
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Custom Roles</h2>
+                                        <p class="text-[11px] text-dark-muted mt-0.5">Control subtree access by assigning root tasks.</p>
+                                    </div>
+                                    <button id="show-add-role-btn" onclick="triggerCreateRole()" class="btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 hidden-pane">
+                                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
+                                        New Role
+                                    </button>
+                                </div>
+                                <div id="project-roles-list" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+                                    <!-- custom roles injected here -->
+                                </div>
                             </div>
-                            <button id="show-add-member-btn" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hidden-pane">
-                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                                Invite Member
-                            </button>
-                        </div>
-                        
-                        <div id="project-members-list" class="grid grid-cols-1 xl:grid-cols-2 gap-4 pb-20">
-                            <!-- Members injected -->
+                            
+                            <!-- Team Members Column -->
+                            <div class="flex flex-col h-full border border-dark-border bg-dark-panel rounded-xl overflow-hidden shadow-lg">
+                                <div class="px-5 py-4 border-b border-dark-border flex items-center justify-between bg-dark-base flex-shrink-0">
+                                    <div>
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Team Members</h2>
+                                        <p class="text-[11px] text-dark-muted mt-0.5">Manage team members and view contributions.</p>
+                                    </div>
+                                    <button id="show-add-member-btn" class="btn-primary px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 hidden-pane">
+                                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                                        Invite Member
+                                    </button>
+                                </div>
+                                <div id="project-members-list" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+                                    <!-- Members injected -->
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -247,6 +270,49 @@
     </div>
 
     <!-- Modals -->
+
+    <!-- Role Modal -->
+    <div id="role-modal" class="fixed inset-0 z-[60] bg-black/60 hidden-pane flex items-center justify-center p-4">
+        <div class="bg-dark-panel border border-dark-border w-full max-w-md rounded-xl shadow-xl overflow-hidden fade-in flex flex-col">
+            <div class="px-6 py-5 border-b border-dark-border">
+                <h3 class="text-lg font-bold text-white">Create Custom Role</h3>
+            </div>
+            <form id="role-form">
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-dark-muted mb-1.5">Role Name</label>
+                        <input type="text" id="role-name" required class="input-dark w-full px-3 py-2 rounded-lg text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-dark-muted mb-2">Role Color</label>
+                        <input type="hidden" id="role-color" value="#3B82F6">
+                        <div id="role-color-picker" class="flex flex-wrap gap-2.5">
+                            <!-- 10 Colors: Blue, Purple, Pink, Red, Orange, Yellow, Green, Teal, Cyan, Indigo -->
+                            <div onclick="selectRoleColor('#3B82F6', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-white ring-2 ring-brand-default/40 transition-all bg-[#3B82F6]" title="Blue"></div>
+                            <div onclick="selectRoleColor('#8B5CF6', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#8B5CF6]" title="Purple"></div>
+                            <div onclick="selectRoleColor('#EC4899', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#EC4899]" title="Pink"></div>
+                            <div onclick="selectRoleColor('#EF4444', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#EF4444]" title="Red"></div>
+                            <div onclick="selectRoleColor('#F59E0B', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#F59E0B]" title="Orange"></div>
+                            <div onclick="selectRoleColor('#EAB308', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#EAB308]" title="Yellow"></div>
+                            <div onclick="selectRoleColor('#22C55E', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#22C55E]" title="Green"></div>
+                            <div onclick="selectRoleColor('#14B8A6', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#14B8A6]" title="Teal"></div>
+                            <div onclick="selectRoleColor('#06B6D4', this)" class="w-8 h-8 rounded-full cursor-pointer border-2 border-transparent hover:scale-110 transition-all bg-[#06B6D4]" title="Cyan"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-dark-muted mb-1.5">Root Task Access</label>
+                        <select id="role-task" required class="input-dark w-full px-3 py-2 rounded-lg text-sm text-white">
+                            <!-- Options injected -->
+                        </select>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-dark-base border-t border-dark-border flex justify-end gap-3">
+                    <button type="button" class="btn-secondary px-4 py-2 rounded-lg text-sm" onclick="document.getElementById('role-modal').classList.add('hidden-pane')">Cancel</button>
+                    <button type="submit" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Notifications Modal -->
     <div id="notif-modal" class="fixed inset-0 z-[60] bg-black/60 hidden-pane flex items-center justify-center p-4">
