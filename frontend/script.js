@@ -526,8 +526,17 @@ window.triggerNewTask = function(parentId = null) {
     document.getElementById('task-modal-title').textContent = parentId ? 'Create Subtask' : 'Create Root Task';
     
     // Populate Assignees selector
-    const sel = document.getElementById('task-assignees');
-    sel.innerHTML = projectMembers.map(m => `<option value="${m.user_id}">${m.username}</option>`).join('');
+    const container = document.getElementById('task-assignees-container');
+    if (projectMembers.length === 0) {
+        container.innerHTML = '<div class="text-dark-muted text-xs italic">No members available to assign.</div>';
+    } else {
+        container.innerHTML = projectMembers.map(m => `
+            <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-dark-hover cursor-pointer transition-all border border-transparent hover:border-dark-border/50 group">
+                <input type="checkbox" name="task-assignee" value="${m.user_id}" class="w-5 h-5 rounded-lg border-dark-border bg-dark-base text-brand-default focus:ring-brand-default transition-all cursor-pointer accent-brand-default">
+                <span class="text-sm text-dark-muted group-hover:text-white transition-colors flex-1">${m.username}</span>
+            </label>
+        `).join('');
+    }
     
     document.getElementById('task-modal').classList.remove('hidden-pane');
 }
@@ -546,11 +555,20 @@ window.triggerEditTask = function(taskId) {
     document.getElementById('task-priority').value = task.priority || 'Medium';
     
     // Populate Assignees selector
-    const sel = document.getElementById('task-assignees');
-    sel.innerHTML = projectMembers.map(m => {
-        const isSel = task.assignees.find(a => a.user_id === m.user_id) ? 'selected' : '';
-        return `<option value="${m.user_id}" ${isSel}>${m.username}</option>`
-    }).join('');
+    const container = document.getElementById('task-assignees-container');
+    if (projectMembers.length === 0) {
+        container.innerHTML = '<div class="text-dark-muted text-xs italic">No members available to assign.</div>';
+    } else {
+        container.innerHTML = projectMembers.map(m => {
+            const isChecked = task.assignees.some(a => a.user_id === m.user_id) ? 'checked' : '';
+            return `
+                <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-dark-hover cursor-pointer transition-all border border-transparent hover:border-dark-border/50 group">
+                    <input type="checkbox" name="task-assignee" value="${m.user_id}" ${isChecked} class="w-5 h-5 rounded-lg border-dark-border bg-dark-base text-brand-default focus:ring-brand-default transition-all cursor-pointer accent-brand-default">
+                    <span class="text-sm ${isChecked ? 'text-white font-medium' : 'text-dark-muted'} group-hover:text-white transition-colors flex-1">${m.username}</span>
+                </label>
+            `;
+        }).join('');
+    }
     
     document.getElementById('task-modal').classList.remove('hidden-pane');
 }
@@ -561,8 +579,8 @@ document.getElementById('task-form').addEventListener('submit', async (e) => {
     const mode = document.getElementById('task-action-mode').value;
     const targetId = document.getElementById('task-target-id').value;
     
-    const select = document.getElementById('task-assignees');
-    const selectedAssignees = Array.from(select.selectedOptions).map(opt => opt.value);
+    const checkboxes = document.querySelectorAll('input[name="task-assignee"]:checked');
+    const selectedAssignees = Array.from(checkboxes).map(cb => cb.value);
     
     const pId = document.getElementById('task-parent-id').value;
     
