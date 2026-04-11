@@ -313,7 +313,7 @@ function selectProject(id) {
     
     // filter so tasks can only be assigned to "Joined" members
     projectMembers = project.members.filter(m => m.status === 'Joined');
-    renderMembers(project.members);
+    switchTab('workflow');
     loadTasks();
 }
 
@@ -321,20 +321,67 @@ function renderMembers(members) {
     const list = document.getElementById('project-members-list');
     list.innerHTML = members.map(m => {
         const rc = getRoleColor(m.role);
-        // Only show edit prompt if current user is admin, AND the member is NOT themselves
         const canEdit = userRoleInProject === 'Admin' && m.user_id !== currentUser.id;
         
+        // Find tasks completed by this member
+        const memberCompletedTasks = allTasks.filter(t => 
+            t.is_done && 
+            t.assignees && 
+            t.assignees.some(a => a.user_id === m.user_id)
+        );
+
+        const tasksHtml = memberCompletedTasks.map(t => {
+            const dateStr = t.completed_at ? new Date(t.completed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'N/A';
+            return `
+                <div class="text-xs border-t border-dark-border py-2 flex justify-between gap-4 text-dark-muted">
+                    <span class="truncate">${t.title}</span>
+                    <span class="whitespace-nowrap opacity-75">${dateStr}</span>
+                </div>
+            `;
+        }).join('');
+
+        const noTasksHtml = `<div class="text-xs italic text-dark-muted py-2 border-t border-dark-border mt-2">No tasks completed yet.</div>`;
+
         return `
-        <div class="flex flex-col gap-1 p-2 rounded-lg ${canEdit ? 'hover:bg-dark-hover cursor-pointer group transition-colors' : ''}" ${canEdit ? `onclick="triggerEditMemberRole('${m.user_id}', '${m.username}', '${m.role}')"` : ''}>
-            <div class="flex items-center gap-2">
-                <div class="flex-1 overflow-hidden flex justify-between items-center">
-                    <span class="text-sm text-white truncate ${m.status === 'Pending' ? 'opacity-50' : ''}">${m.username} ${m.status === 'Pending' ? '(Pending)' : ''}</span>
-                    <span class="text-[10px] uppercase font-bold border px-1.5 py-0.5 rounded ${rc}">${m.role}</span>
+        <div class="flex flex-col bg-dark-panel border border-dark-border rounded-xl overflow-hidden transition-all duration-300">
+            <div class="p-4 flex items-center justify-between gap-3 ${canEdit ? 'hover:bg-dark-hover cursor-pointer group' : ''}">
+                <div class="flex-1 overflow-hidden" ${canEdit ? `onclick="triggerEditMemberRole('${m.user_id}', '${m.username}', '${m.role}')"` : ''}>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-sm font-bold text-white truncate ${m.status === 'Pending' ? 'opacity-50' : ''}">${m.username} ${m.status === 'Pending' ? '(Pending)' : ''}</span>
+                        <span class="text-[10px] uppercase font-bold border px-1.5 py-0.5 rounded ${rc}">${m.role}</span>
+                    </div>
+                    ${canEdit ? `<div class="text-[10px] text-brand-default opacity-0 group-hover:opacity-100 transition-opacity">Click to edit role</div>` : '<div class="text-[10px] text-transparent">No action</div>'}
+                </div>
+                
+                <button onclick="toggleMemberAccordion('${m.user_id}')" class="p-2 rounded-lg bg-dark-base border border-dark-border text-dark-muted hover:text-white hover:border-brand-default transition-colors" title="View Contributions">
+                    <svg id="accordion-icon-${m.user_id}" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="transform transition-transform duration-200"><path d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+            </div>
+            
+            <div id="accordion-content-${m.user_id}" class="hidden-pane bg-dark-base px-4 pb-2 border-t border-dark-border">
+                <div class="flex items-center gap-2 mt-3 mb-2">
+                    <h4 class="text-[11px] font-bold text-white uppercase tracking-wider flex-1">Completed Tasks</h4>
+                    <span class="px-1.5 py-0.5 rounded-full bg-brand-default text-white text-[9px] font-bold">${memberCompletedTasks.length}</span>
+                </div>
+                <div class="max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                    ${memberCompletedTasks.length > 0 ? tasksHtml : noTasksHtml}
                 </div>
             </div>
-            ${canEdit ? `<div class="text-[10px] text-brand-default opacity-0 group-hover:opacity-100 transition-opacity">Click to modify role</div>` : ''}
         </div>
     `}).join('');
+}
+
+window.toggleMemberAccordion = function(userId) {
+    const content = document.getElementById(`accordion-content-${userId}`);
+    const icon = document.getElementById(`accordion-icon-${userId}`);
+    
+    if(content.classList.contains('hidden-pane')) {
+        content.classList.remove('hidden-pane');
+        icon.classList.add('rotate-180');
+    } else {
+        content.classList.add('hidden-pane');
+        icon.classList.remove('rotate-180');
+    }
 }
 
 
@@ -406,6 +453,8 @@ async function loadTasks() {
     try {
         allTasks = await apiCall(`/tasks/project/${activeProjectId}`);
         renderTaskTree();
+        const project = allProjects.find(p => p.id === activeProjectId);
+        if(project) renderMembers(project.members);
     } catch (err) {
         document.getElementById('tasks-tree-container').innerHTML = `<div class="text-red-400 p-4">${err.message}</div>`;
     }
@@ -463,7 +512,23 @@ function renderTaskTree() {
                     <div class="flex justify-between items-start gap-4">
                         <div class="flex-1">
                             <div class="flex items-center gap-3 mb-1">
+                                ${hasChildren ? `
+                                <button onclick="toggleSubtask('${node.id}')" class="text-dark-muted hover:text-white transition-colors">
+                                    <svg id="subtask-icon-${node.id}" width="16" height="16" viewBox="0 0 24 24" fill="none" class="transform transition-transform rotate-180" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                ` : ''}
                                 <h4 class="text-sm font-bold text-white ${node.is_done ? 'line-through' : ''}">${node.title}</h4>
+                                
+                                <div class="relative group cursor-help text-dark-muted hover:text-brand-default transition-colors">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4m0-4h.01"></path></svg>
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-black border border-dark-border text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                        <div class="mb-1 text-dark-muted uppercase font-bold text-[8px] tracking-wider">Task Info</div>
+                                        <div><span class="text-dark-muted">Created By:</span> ${node.owner_username || 'Unknown'}</div>
+                                        <div><span class="text-dark-muted">Created On:</span> ${node.created_at ? new Date(node.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'N/A'}</div>
+                                        <div><span class="text-dark-muted">Completed On:</span> ${node.completed_at ? new Date(node.completed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Pending'}</div>
+                                    </div>
+                                </div>
+                                
                                 ${node.progressTotal > 0 ? `<span class="text-[10px] font-bold text-brand-default px-2 py-0.5 bg-brand-default/10 rounded">${node.progressPct}%</span>` : ''}
                             </div>
                             <p class="text-xs text-dark-muted mb-3">${node.description || 'No description'}</p>
@@ -491,25 +556,25 @@ function renderTaskTree() {
                         <!-- Actions -->
                         <div class="flex items-center gap-2">
                             ${canMarkDone ? `
-                            <button onclick="toggleDone('${node.id}', ${!node.is_done})" class="px-2 py-1 rounded bg-dark-hover border border-dark-border text-xs ${node.is_done ? 'text-dark-muted' : 'text-green-400 hover:text-green-300'} transition-colors font-medium">
+                            <button onclick="toggleDone('${node.id}', ${!node.is_done})" class="px-2 py-1 rounded border transition-colors font-medium text-xs ${node.is_done ? 'bg-brand-default text-white border-brand-default hover:bg-brand-hover' : 'bg-dark-hover border-dark-border text-green-400 hover:text-green-300'}">
                                 ${node.is_done ? 'Unmark' : 'Done ✓'}
                             </button>
                             ` : ''}
                             ${userRoleInProject !== 'Viewer' ? `
-                            <button onclick="triggerNewTask('${node.id}')" class="px-2 py-1 rounded bg-brand-default/10 border border-brand-default/20 text-xs text-brand-default hover:bg-brand-default/20 transition-colors font-medium">
-                                + Subtask
+                            <button onclick="triggerNewTask('${node.id}')" class="px-2 py-1 rounded bg-brand-default/10 border border-brand-default/20 text-xs text-brand-default hover:bg-brand-default/20 transition-colors font-medium" title="Add Subtask">
+                                +
                             </button>
-                            <button onclick="triggerEditTask('${node.id}')" class="px-2 py-1 rounded border border-dark-border text-xs text-dark-muted hover:text-white hover:bg-dark-hover transition-colors font-medium">
-                                Edit
+                            <button onclick="triggerEditTask('${node.id}')" class="p-1.5 rounded border border-dark-border text-dark-muted hover:text-white hover:bg-dark-hover transition-colors" title="Edit">
+                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             </button>
-                            <button onclick="deleteTask('${node.id}')" class="px-2 py-1 rounded border border-dark-border text-xs text-red-500 hover:bg-red-500/10 transition-colors font-medium">
-                                Del
+                            <button onclick="deleteTask('${node.id}')" class="p-1.5 rounded border border-dark-border text-red-500 hover:bg-red-500/10 transition-colors" title="Delete">
+                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                             ` : ''}
                         </div>
                     </div>
                 </div>
-                ${hasChildren ? `<div class="tree-children">${buildHtml(node.children, depth + 1)}</div>` : ''}
+                ${hasChildren ? `<div id="subtasks-${node.id}" class="tree-children">${buildHtml(node.children, depth + 1)}</div>` : ''}
             </div>
             `;
         });
@@ -517,6 +582,18 @@ function renderTaskTree() {
     }
     html = buildHtml(tree, 0);
     container.innerHTML = html;
+}
+
+window.toggleSubtask = function(taskId) {
+    const el = document.getElementById(`subtasks-${taskId}`);
+    const icon = document.getElementById(`subtask-icon-${taskId}`);
+    if(el.classList.contains('hidden-pane')) {
+        el.classList.remove('hidden-pane');
+        icon.classList.add('rotate-180');
+    } else {
+        el.classList.add('hidden-pane');
+        icon.classList.remove('rotate-180');
+    }
 }
 
 window.triggerNewTask = function(parentId = null) {
@@ -631,12 +708,33 @@ window.openRemarks = function(taskId) {
     if(!task.remarks || task.remarks.length === 0) {
         list.innerHTML = '<div class="text-sm text-dark-muted text-center p-4">No remarks yet.</div>';
     } else {
-        list.innerHTML = task.remarks.map(r => `
-            <div class="bg-dark-base border border-dark-border p-3 rounded-xl rounded-tl-sm w-[85%] relative">
-                <div class="font-bold text-xs text-brand-default mb-1">${r.username}</div>
-                <div class="text-sm text-white">${r.text}</div>
+        const project = allProjects.find(p => p.id === activeProjectId);
+        list.innerHTML = task.remarks.map(r => {
+            const isMe = r.user_id === currentUser.id;
+            let roleStr = 'Unknown';
+            if(project) {
+                if(project.owner_id === r.user_id) roleStr = 'Admin';
+                else {
+                    const m = project.members.find(x => x.user_id === r.user_id);
+                    if(m) roleStr = m.role;
+                }
+            }
+            const rc = getRoleColor(roleStr);
+            const ts = new Date(r.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+
+            return `
+            <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                <div class="${isMe ? 'bg-brand-default/20 border-brand-default/30 rounded-tr-sm' : 'bg-dark-base border-dark-border rounded-tl-sm'} border p-3 rounded-xl w-[85%] relative shadow-lg">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <div class="font-bold text-xs ${isMe ? 'text-white' : 'text-brand-default'}">${isMe ? 'You' : r.username}</div>
+                        <div class="text-[9px] uppercase font-bold border px-1.5 py-0.5 rounded ${rc}">${roleStr}</div>
+                    </div>
+                    <div class="text-sm text-white leading-relaxed">${r.text}</div>
+                    <div class="text-[9px] text-dark-muted mt-2 text-right opacity-75">${ts}</div>
+                </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
     
     document.getElementById('remark-modal').classList.remove('hidden-pane');
@@ -747,5 +845,24 @@ actionConfirm.addEventListener('click', async () => {
 document.getElementById('action-cancel-btn').addEventListener('click', () => {
     actionModal.classList.add('hidden-pane');
 });
+
+window.switchTab = function(tabName) {
+    const workflowBtn = document.getElementById('tab-btn-workflow');
+    const membersBtn = document.getElementById('tab-btn-members');
+    const paneWorkflow = document.getElementById('pane-workflow');
+    const paneMembers = document.getElementById('pane-members');
+
+    if(tabName === 'workflow') {
+        workflowBtn.className = "text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors";
+        membersBtn.className = "text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors";
+        paneWorkflow.classList.remove('hidden-pane');
+        paneMembers.classList.add('hidden-pane');
+    } else {
+        workflowBtn.className = "text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors";
+        membersBtn.className = "text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors";
+        paneWorkflow.classList.add('hidden-pane');
+        paneMembers.classList.remove('hidden-pane');
+    }
+}
 
 init();

@@ -47,6 +47,8 @@ def create_task():
         "priority": data.get('priority', 'Medium'),
         "image_url": data.get('image_url'),
         "is_done": False,
+        "created_at": datetime.datetime.utcnow().isoformat() + 'Z',
+        "completed_at": None,
         "owner_id": user_id,
         "project_id": project_id,
         "parent_task_id": data.get('parent_task_id', None),
@@ -110,6 +112,8 @@ def get_tasks_for_project(project_id):
             "priority": t.get('priority'),
             "image_url": t.get('image_url'),
             "is_done": t.get('is_done', False),
+            "created_at": t.get('created_at'),
+            "completed_at": t.get('completed_at'),
             "owner_id": t.get('owner_id'),
             "owner_username": owner_username,
             "project_id": t.get('project_id'),
@@ -175,7 +179,9 @@ def update_delete_task(task_id):
         if 'description' in data: update_fields['description'] = data['description']
         if 'due_date' in data: update_fields['due_date'] = data['due_date']
         if 'priority' in data: update_fields['priority'] = data['priority']
-        if 'is_done' in data: update_fields['is_done'] = data['is_done']
+        if 'is_done' in data: 
+            update_fields['is_done'] = data['is_done']
+            update_fields['completed_at'] = datetime.datetime.utcnow().isoformat() + 'Z' if data['is_done'] else None
         if 'assignees' in data: update_fields['assignees'] = data['assignees']
         
         if update_fields:
@@ -222,7 +228,7 @@ def add_remark(task_id):
         "user_id": user_id,
         "username": username,
         "text": text,
-        "timestamp": datetime.datetime.utcnow().isoformat()
+        "timestamp": datetime.datetime.utcnow().isoformat() + 'Z'
     }
     
     tasks_collection.update_one(

@@ -188,10 +188,6 @@
                         <span id="active-project-role" class="px-2 py-0.5 rounded text-xs font-semibold">Role</span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button id="show-add-member-btn" class="btn-secondary px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 hidden-pane">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                            Invite Member
-                        </button>
                         <button id="delete-project-btn" class="btn-secondary hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 px-3 py-1.5 rounded-lg text-sm hidden-pane">
                             Delete Project
                         </button>
@@ -201,11 +197,17 @@
                     </div>
                 </header>
 
-                <!-- Project Layout Split -->
-                <div class="flex-1 flex overflow-hidden">
+                <!-- Project Tabs -->
+                <div class="h-12 border-b border-dark-border bg-dark-base px-8 flex gap-6 flex-shrink-0">
+                    <button id="tab-btn-workflow" onclick="switchTab('workflow')" class="text-sm font-bold border-b-2 border-brand-default text-brand-default px-1 py-3 transition-colors">Workflow</button>
+                    <button id="tab-btn-members" onclick="switchTab('members')" class="text-sm font-medium border-b-2 border-transparent text-dark-muted hover:text-white px-1 py-3 transition-colors">Members</button>
+                </div>
+
+                <!-- Project Layout Content -->
+                <div class="flex-1 flex overflow-hidden relative">
                     
-                    <!-- Tasks Tree -->
-                    <div class="flex-1 overflow-y-auto p-8 relative" id="tasks-scroll-area">
+                    <!-- Tasks Pane -->
+                    <div class="flex-1 overflow-y-auto p-8 relative flex-col w-full h-full" id="pane-workflow">
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <h2 class="text-lg font-semibold text-white">Tasks & Subtasks</h2>
@@ -222,12 +224,20 @@
                         </div>
                     </div>
                     
-                    <!-- Right Sidebar: Members -->
-                    <div class="w-72 bg-dark-base border-l border-dark-border flex flex-col flex-shrink-0">
-                        <div class="p-4 border-b border-dark-border">
-                            <h3 class="text-sm font-semibold text-white">Team Members</h3>
+                    <!-- Members Pane -->
+                    <div class="flex-1 overflow-y-auto p-8 relative flex-col w-full h-full hidden-pane" id="pane-members">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 class="text-lg font-semibold text-white">Team Members</h2>
+                                <p class="text-sm text-dark-muted mt-1">Manage team members and view contributions.</p>
+                            </div>
+                            <button id="show-add-member-btn" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hidden-pane">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                                Invite Member
+                            </button>
                         </div>
-                        <div id="project-members-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+                        
+                        <div id="project-members-list" class="grid grid-cols-1 xl:grid-cols-2 gap-4 pb-20">
                             <!-- Members injected -->
                         </div>
                     </div>
